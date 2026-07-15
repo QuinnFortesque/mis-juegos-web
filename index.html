@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Videojuegos 2026 - Cloud</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        /* Estilos base y animaciones */
+        body { font-family: 'Inter', sans-serif; }
+        
+        .game-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .game-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+        
+        /* Ocultar barra de scroll pero mantener funcionalidad */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Autocomplete dropdown */
+        .autocomplete-list {
+            max-height: 250px;
+            overflow-y: auto;
+            transition: all 0.2s;
+        }
+
+        /* Goty glow effect */
+        .goty-glow {
+            box-shadow: 0 0 15px 2px rgba(234, 179, 8, 0.4);
+            border-color: rgba(234, 179, 8, 0.6) !important;
+        }
+
+        /* Custom range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #06b6d4;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #475569;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+    <div class="max-w-7xl mx-auto px-4 py-8 relative">
+        
+        <!-- Header -->
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-cyan-400 to-blue-500 mb-2">
+                    <i class="ph-fill ph-game-controller text-purple-400"></i> Mi Diario Gamer
+                </h1>
+                <p class="text-slate-400 text-lg flex items-center gap-2">
+                    <span>Temporada 2026</span>
+                    <span id="sync-status" class="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded-full flex items-center gap-1">
+                        <i class="ph ph-spinner animate-spin"></i> Conectando...
+                    </span>
+                </p>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="flex bg-slate-800 rounded-xl p-1 border border-slate-700 shadow-lg">
+                <button id="tab-all" onclick="switchTab('all')" class="tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all bg-slate-700 text-white shadow">
+                    <i class="ph ph-list-dashes mr-1"></i> Mi Lista
+                </button>
+                <button id="tab-top" onclick="switchTab('top')" class="tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-slate-200">
+                    <i class="ph ph-trophy mr-1"></i> Top 10
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Panel izquierdo: Formulario (Fijo en desktop) -->
+            <div class="lg:col-span-4 xl:col-span-3">
+                <div class="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 lg:sticky lg:top-8">
+                    <h2 class="text-xl font-bold mb-5 flex items-center gap-2 text-cyan-400">
+                        <i class="ph-fill ph-plus-circle"></i> Registrar Juego
+                    </h2>
+                    
+                    <form id="game-form" class="space-y-4">
+                        <!-- Título con Autocomplete -->
+                        <div class="relative">
+                            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Título del juego</label>
+                            <input type="text" id="title" required autocomplete="off" placeholder="Ej: Baldur's Gate 3" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors">
+                            
+                            <!-- Contenedor del Autocomplete -->
+                            <div id="autocomplete-results" class="autocomplete-list absolute z-50 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl hidden">
+                                <!-- Resultados se inyectan aquí -->
+                            </div>
+                        </div>
+
+                        <!-- Portada oculta en el form, se llena sola o con placeholder -->
+                        <input type="hidden" id="cover">
+
+                        <!-- Plataforma -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Plataforma</label>
+                            <select id="platform" required class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 appearance-none">
+                                <option value="PC">PC</option>
+                                <option value="Steam">Steam</option>
+                                <option value="Steam Deck">Steam Deck</option>
+                                <option value="PS5">PlayStation 5</option>
+                                <option value="PS4">PlayStation 4</option>
+                                <option value="Switch 2">Nintendo Switch 2</option>
+                                <option value="Switch">Nintendo Switch</option>
+                                <option value="Xbox Series X/S">Xbox Series X/S</option>
+                                <option value="Móvil">Móvil (iOS/Android)</option>
+                            </select>
+                        </div>
+
+                        <!-- Estado -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Estado</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="status" value="Jugando" class="peer sr-only" checked>
+                                    <div class="text-center px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg peer-checked:bg-blue-500/20 peer-checked:border-blue-500 peer-checked:text-blue-400 text-sm font-medium transition-all">Jugando</div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="status" value="Pendiente" class="peer sr-only">
+                                    <div class="text-center px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg peer-checked:bg-purple-500/20 peer-checked:border-purple-500 peer-checked:text-purple-400 text-sm font-medium transition-all">Pendiente</div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="status" value="Completado" class="peer sr-only">
+                                    <div class="text-center px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg peer-checked:bg-green-500/20 peer-checked:border-green-500 peer-checked:text-green-400 text-sm font-medium transition-all">Completado</div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="status" value="Dropeado" class="peer sr-only">
+                                    <div class="text-center px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg peer-checked:bg-red-500/20 peer-checked:border-red-500 peer-checked:text-red-400 text-sm font-medium transition-all">Dropeado</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Puntuación 0-100 -->
+                        <div>
+                            <div class="flex justify-between items-end mb-1">
+                                <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider">Puntuación</label>
+                                <span id="rating-display" class="text-2xl font-black text-cyan-400">85</span>
+                            </div>
+                            <input type="range" id="rating" min="0" max="100" value="85" class="w-full">
+                        </div>
+
+                        <!-- Notas -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Notas / Opinión</label>
+                            <textarea id="notes" rows="3" placeholder="¿Qué te ha parecido?" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 resize-none"></textarea>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-cyan-500/20 transform transition-all active:scale-95 flex justify-center items-center gap-2">
+                            <i class="ph-bold ph-floppy-disk"></i> Guardar en la Nube
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Panel derecho: Lista de juegos -->
+            <div class="lg:col-span-8 xl:col-span-9">
+                <!-- Vista: Todos los juegos -->
+                <div id="view-all">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2">
+                            <i class="ph-fill ph-game-controller"></i> Mi Colección
+                        </h2>
+                        <span id="game-count" class="bg-slate-800 border border-slate-700 text-slate-300 text-sm font-bold px-4 py-1.5 rounded-full">0 juegos</span>
+                    </div>
+                    
+                    <div id="games-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-12">
+                        <!-- Las tarjetas se inyectan aquí -->
+                    </div>
+                </div>
+
+                <!-- Vista: Top 10 -->
+                <div id="view-top" class="hidden">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl md:text-2xl font-bold flex items-center gap-2 text-yellow-400">
+                            <i class="ph-fill ph-medal"></i> El Top 10 Definitivo
+                        </h2>
+                    </div>
+                    
+                    <div id="top-grid" class="flex flex-col gap-4 pb-12">
+                        <!-- El ranking se inyecta aquí -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Inicialización de Firebase con variables globales del entorno
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId = null;
+        let gamesData = []; // Caché local para renderizar y ordenar
+        let currentTab = 'all';
+
+        // Elementos del DOM
+        const form = document.getElementById('game-form');
+        const titleInput = document.getElementById('title');
+        const coverInput = document.getElementById('cover');
+        const ratingInput = document.getElementById('rating');
+        const ratingDisplay = document.getElementById('rating-display');
+        const syncStatus = document.getElementById('sync-status');
+        const gamesGrid = document.getElementById('games-grid');
+        const topGrid = document.getElementById('top-grid');
+        const gameCount = document.getElementById('game-count');
+        const autocompleteResults = document.getElementById('autocomplete-results');
+
+        // Autenticación requerida antes de hacer queries
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                syncStatus.innerHTML = '<i class="ph-fill ph-cloud-check"></i> Sincronizado';
+                syncStatus.className = 'text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full flex items-center gap-1';
+                loadGames();
+            } catch (error) {
+                console.error("Error de autenticación:", error);
+                syncStatus.innerHTML = '<i class="ph-fill ph-warning-circle"></i> Error de conexión';
+                syncStatus.className = 'text-xs px-2 py-1 bg-red-500/20 text-red-400 rounded-full flex items-center gap-1';
+            }
+        }
+
+        // Base de datos simulada para el autocompletado (como si fuera IGDB)
+        const mockDatabase = [
+            { title: "Baldur's Gate 3", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co670h.jpg" },
+            { title: "Elden Ring", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co4jni.jpg" },
+            { title: "The Legend of Zelda: Tears of the Kingdom", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co5vmg.jpg" },
+            { title: "Cyberpunk 2077", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co2mvt.jpg" },
+            { title: "Red Dead Redemption 2", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1q1f.jpg" },
+            { title: "Hollow Knight", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg" },
+            { title: "Final Fantasy VII Rebirth", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co80c4.jpg" },
+            { title: "Helldivers 2", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co7u15.jpg" },
+            { title: "Persona 3 Reload", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co6mwu.jpg" },
+            { title: "Hades", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co39vc.jpg" },
+            { title: "Hades II", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co5ycd.jpg" },
+            { title: "Alan Wake 2", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co6eif.jpg" },
+            { title: "Super Mario Bros. Wonder", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co6l8w.jpg" },
+            { title: "Spider-Man 2", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co69d1.jpg" },
+            { title: "Grand Theft Auto V", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co2lbd.jpg" },
+            { title: "Stardew Valley", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/xrpmydnu9rpxvxfjkiu7.jpg" },
+            { title: "Palworld", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co81x7.jpg" },
+            { title: "Resident Evil 4", cover: "https://images.igdb.com/igdb/image/upload/t_cover_big/co671m.jpg" }
+        ];
+
+        // Lógica de Autocompletado
+        titleInput.addEventListener('input', (e) => {
+            const val = e.target.value.toLowerCase().trim();
+            autocompleteResults.innerHTML = '';
+            coverInput.value = ''; // Resetear cover si escribe manual
+            
+            if (!val) {
+                autocompleteResults.classList.add('hidden');
+                return;
+            }
+
+            const matches = mockDatabase.filter(game => game.title.toLowerCase().includes(val));
+            
+            if (matches.length > 0) {
+                autocompleteResults.classList.remove('hidden');
+                matches.forEach(game => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-3 p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-0 transition-colors';
+                    div.innerHTML = `
+                        <img src="${game.cover}" alt="cover" class="w-8 h-10 object-cover rounded bg-slate-900">
+                        <span class="font-medium text-sm text-slate-200">${game.title}</span>
+                    `;
+                    div.addEventListener('click', () => {
+                        titleInput.value = game.title;
+                        coverInput.value = game.cover;
+                        autocompleteResults.classList.add('hidden');
+                    });
+                    autocompleteResults.appendChild(div);
+                });
+            } else {
+                autocompleteResults.classList.add('hidden');
+            }
+        });
+
+        // Ocultar autocomplete al hacer click fuera
+        document.addEventListener('click', (e) => {
+            if (!titleInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+                autocompleteResults.classList.add('hidden');
+            }
+        });
+
+        // Actualizar slider display
+        ratingInput.addEventListener('input', (e) => {
+            ratingDisplay.innerText = e.target.value;
+            // Cambiar color según puntuación
+            const val = parseInt(e.target.value);
+            ratingDisplay.className = `text-2xl font-black ${val >= 90 ? 'text-yellow-400' : val >= 70 ? 'text-green-400' : val >= 50 ? 'text-cyan-400' : 'text-red-400'}`;
+        });
+
+        // Cargar juegos desde Firestore en tiempo real
+        function loadGames() {
+            if (!userId) return;
+            const gamesRef = collection(db, 'artifacts', appId, 'users', userId, 'games');
+            
+            onSnapshot(gamesRef, (snapshot) => {
+                gamesData = [];
+                snapshot.forEach(doc => {
+                    gamesData.push({ id: doc.id, ...doc.data() });
+                });
+                // Ordenar por fecha de creación descendente por defecto
+                gamesData.sort((a, b) => b.createdAt - a.createdAt);
+                renderCurrentTab();
+            }, (error) => {
+                console.error("Error escuchando juegos:", error);
+            });
+        }
+
+        // Guardar juego
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!userId) return;
+
+            const title = titleInput.value.trim();
+            let cover = coverInput.value.trim();
+            
+            // Generar placeholder si no hay cover
+            if (!cover) {
+                cover = `https://placehold.co/600x800/1e293b/06b6d4?text=${encodeURIComponent(title)}`;
+            }
+
+            const newGame = {
+                title,
+                cover,
+                platform: document.getElementById('platform').value,
+                status: document.querySelector('input[name="status"]:checked').value,
+                rating: parseInt(ratingInput.value),
+                notes: document.getElementById('notes').value.trim(),
+                isGoty: false,
+                createdAt: Date.now()
+            };
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Guardando...';
+            submitBtn.disabled = true;
+
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', userId, 'games'), newGame);
+                form.reset();
+                ratingDisplay.innerText = '85';
+                ratingDisplay.className = 'text-2xl font-black text-cyan-400';
+                coverInput.value = '';
+            } catch (error) {
+                console.error("Error al guardar:", error);
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Eliminar juego
+        window.deleteGame = async (id) => {
+            if (!userId) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', userId, 'games', id));
+            } catch (error) {
+                console.error("Error al eliminar:", error);
+            }
+        };
+
+        // Marcar/Desmarcar GOTY
+        window.toggleGoty = async (id, currentGotyStatus) => {
+            if (!userId) return;
+            
+            try {
+                // Si lo estamos marcando como GOTY, primero quitamos el GOTY actual
+                if (!currentGotyStatus) {
+                    const currentGoty = gamesData.find(g => g.isGoty);
+                    if (currentGoty) {
+                        await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'games', currentGoty.id), { isGoty: false });
+                    }
+                }
+                // Actualizamos el juego seleccionado
+                await updateDoc(doc(db, 'artifacts', appId, 'users', userId, 'games', id), { isGoty: !currentGotyStatus });
+            } catch (error) {
+                console.error("Error al actualizar GOTY:", error);
+            }
+        };
+
+        
+        // Utilidad para obtener el color del estado
+        function getStatusColor(status) {
+            switch(status) {
+                case 'Jugando': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+                case 'Pendiente': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+                case 'Completado': return 'bg-green-500/20 text-green-400 border-green-500/30';
+                case 'Dropeado': return 'bg-red-500/20 text-red-400 border-red-500/30';
+                default: return 'bg-slate-700 text-slate-300 border-slate-600';
+            }
+        }
+
+        // Cambio de pestañas
+        window.switchTab = (tabId) => {
+            currentTab = tabId;
+            const btnAll = document.getElementById('tab-all');
+            const btnTop = document.getElementById('tab-top');
+            const viewAll = document.getElementById('view-all');
+            const viewTop = document.getElementById('view-top');
+
+            if (tabId === 'all') {
+                btnAll.className = "tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all bg-slate-700 text-white shadow";
+                btnTop.className = "tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-slate-200";
+                viewAll.classList.remove('hidden');
+                viewTop.classList.add('hidden');
+            } else {
+                btnTop.className = "tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all bg-slate-700 text-white shadow";
+                btnAll.className = "tab-btn px-6 py-2.5 rounded-lg font-medium text-sm transition-all text-slate-400 hover:text-slate-200";
+                viewTop.classList.remove('hidden');
+                viewAll.classList.add('hidden');
+            }
+            renderCurrentTab();
+        };
+
+        function renderCurrentTab() {
+            if (currentTab === 'all') {
+                renderGamesGrid();
+            } else {
+                renderTop10();
+            }
+        }
+
+        // Renderizar Cuadrícula Principal (Mi Lista)
+        function renderGamesGrid() {
+            gamesGrid.innerHTML = '';
+            gameCount.innerText = `${gamesData.length} juegos`;
+
+            if (gamesData.length === 0) {
+                gamesGrid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center p-12 text-slate-500 bg-slate-800/50 border border-dashed border-slate-700 rounded-2xl">
+                        <i class="ph-fill ph-ghost text-6xl mb-4 opacity-50"></i>
+                        <p class="text-lg">Tu colección está vacía.</p>
+                        <p class="text-sm">Añade tu primer juego desde el panel izquierdo.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            gamesData.forEach(game => {
+                const card = document.createElement('div');
+                const gotyClass = game.isGoty ? 'goty-glow' : 'border-slate-700';
+                card.className = `game-card bg-slate-800 rounded-2xl overflow-hidden border ${gotyClass} flex flex-col h-full relative group`;
+                
+                // Color de puntuación
+                const rColor = game.rating >= 90 ? 'text-yellow-400' : game.rating >= 70 ? 'text-green-400' : game.rating >= 50 ? 'text-cyan-400' : 'text-red-400';
+
+                card.innerHTML = `
+                    <!-- Acciones (Eliminar / GOTY) -->
+                    <div class="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button onclick="deleteGame('${game.id}')" class="bg-red-500/90 hover:bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center backdrop-blur shadow-lg" title="Eliminar juego">
+                            <i class="ph-bold ph-trash"></i>
+                        </button>
+                        <button onclick="toggleGoty('${game.id}', ${game.isGoty})" class="${game.isGoty ? 'bg-yellow-500 text-slate-900' : 'bg-slate-800/90 hover:bg-yellow-500/90 text-yellow-500 hover:text-slate-900'} border border-yellow-500/50 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur shadow-lg transition-colors" title="${game.isGoty ? 'Quitar GOTY' : 'Marcar como GOTY'}">
+                            <i class="${game.isGoty ? 'ph-fill' : 'ph'} ph-crown text-lg"></i>
+                        </button>
+                    </div>
+
+                    ${game.isGoty ? '<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400 z-10"></div>' : ''}
+                    
+                    <div class="h-48 w-full overflow-hidden bg-slate-900 relative">
+                        <img src="${game.cover}" alt="${game.title}" class="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500">
+                        
+                        <!-- Badges encima de la imagen -->
+                        <div class="absolute bottom-3 left-3 flex flex-col gap-2">
+                            <span class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-slate-900/80 text-slate-300 backdrop-blur border border-slate-700 shadow-lg flex items-center gap-1 w-max">
+                                <i class="ph-fill ph-device-mobile"></i> ${game.platform}
+                            </span>
+                            <span class="text-[10px] uppercase font-bold px-2 py-1 rounded backdrop-blur border shadow-lg w-max ${getStatusColor(game.status)}">
+                                ${game.status}
+                            </span>
+                        </div>
+
+                        <!-- Rating Badge -->
+                        <div class="absolute -bottom-4 right-4 bg-slate-900 px-3 py-1 rounded-xl border border-slate-700 shadow-xl flex items-baseline gap-1">
+                            <span class="font-black text-2xl ${rColor}">${game.rating}</span><span class="text-xs text-slate-400 font-bold">/100</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5 pt-8 flex-grow flex flex-col bg-gradient-to-b from-slate-800 to-slate-900">
+                        <h3 class="text-lg font-bold text-white mb-2 leading-tight">${game.title}</h3>
+                        ${game.isGoty ? '<span class="text-xs font-bold text-yellow-400 mb-2 flex items-center gap-1"><i class="ph-fill ph-crown"></i> JUEGO DEL AÑO</span>' : ''}
+                        <p class="text-slate-400 text-sm flex-grow italic line-clamp-4 mt-2">"${game.notes || 'Sin anotaciones.'}"</p>
+                    </div>
+                `;
+                gamesGrid.appendChild(card);
+            });
+        }
+
+        // Renderizar Top 10
+        function renderTop10() {
+            topGrid.innerHTML = '';
+            
+            // Filtrar juegos que tienen nota (opcional, por si acaso) y ordenar por nota descendente
+            const sortedGames = [...gamesData].sort((a, b) => b.rating - a.rating).slice(0, 10);
+
+            if (sortedGames.length === 0) {
+                topGrid.innerHTML = `
+                    <div class="flex flex-col items-center justify-center p-12 text-slate-500 bg-slate-800/50 border border-dashed border-slate-700 rounded-2xl">
+                        <i class="ph-fill ph-medal text-6xl mb-4 opacity-50"></i>
+                        <p class="text-lg">No hay juegos para rankear.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            sortedGames.forEach((game, index) => {
+                const row = document.createElement('div');
+                const isFirst = index === 0;
+                
+                // Estilos especiales para el podio
+                let rankStyle = "bg-slate-700 text-slate-300";
+                if(index === 0) rankStyle = "bg-yellow-500 text-yellow-900 shadow-[0_0_15px_rgba(234,179,8,0.5)]";
+                if(index === 1) rankStyle = "bg-slate-300 text-slate-800";
+                if(index === 2) rankStyle = "bg-amber-700 text-amber-100";
+
+                row.className = `flex items-center gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700 ${isFirst ? 'transform scale-[1.02] border-yellow-500/50' : ''} hover:bg-slate-750 transition-colors`;
+                
+                row.innerHTML = `
+                    <div class="flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-lg font-black text-xl ${rankStyle}">
+                        #${index + 1}
+                    </div>
+                    <img src="${game.cover}" alt="${game.title}" class="w-12 h-16 object-cover rounded bg-slate-900 shadow-md">
+                    <div class="flex-grow min-w-0">
+                        <h3 class="text-white font-bold truncate ${isFirst ? 'text-xl text-yellow-400' : 'text-lg'}">${game.title}</h3>
+                        <div class="flex items-center gap-2 text-xs mt-1">
+                            <span class="text-slate-400">${game.platform}</span>
+                            <span class="w-1 h-1 rounded-full bg-slate-600"></span>
+                            <span class="${game.status === 'Completado' ? 'text-green-400' : 'text-slate-400'}">${game.status}</span>
+                            ${game.isGoty ? '<span class="w-1 h-1 rounded-full bg-slate-600"></span><span class="text-yellow-400 font-bold"><i class="ph-fill ph-crown"></i> GOTY</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 text-right">
+                        <div class="text-3xl font-black ${game.rating >= 90 ? 'text-yellow-400' : game.rating >= 70 ? 'text-green-400' : game.rating >= 50 ? 'text-cyan-400' : 'text-red-400'}">${game.rating}</div>
+                    </div>
+                `;
+                topGrid.appendChild(row);
+            });
+        }
+
+        // Iniciar
+        initAuth();
+
+    </script>
+</body>
+</html>
