@@ -2,66 +2,63 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Diario Gamer</title>
+    <!-- He añadido una fuente más moderna y estilos mejorados -->
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        .game-card { background: #1e293b; padding: 15px; margin: 10px 0; border-radius: 8px; }
-        input, select, button { width: 100%; padding: 10px; margin: 5px 0; border-radius: 5px; border: none; }
-        button { background: #3b82f6; color: white; cursor: pointer; }
+        :root { --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; display: flex; justify-content: center; }
+        .container { width: 100%; max-width: 500px; }
+        .game-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        button { background: var(--primary); font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #2563eb; }
+        .delete-btn { background: #ef4444; }
+        h1 { text-align: center; color: #60a5fa; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎮 Mi Diario Gamer</h1>
-        <p>Temporada 2026</p>
-        
         <div class="game-card">
-            <input type="text" id="gameTitle" placeholder="Nombre del juego...">
+            <input type="text" id="gameTitle" placeholder="Título del juego...">
             <select id="gameStatus">
                 <option value="Pendiente">Pendiente</option>
                 <option value="Jugando">Jugando</option>
-                <option value="Drapeado">Drapeado</option>
                 <option value="Completado">Completado</option>
             </select>
-            <input type="number" id="gameScore" placeholder="Puntuación (0-100)" min="0" max="100">
+            <input type="number" id="gameScore" placeholder="Puntuación (0-100)">
             <button onclick="addGame()">Añadir Juego</button>
         </div>
-
         <div id="gameList"></div>
     </div>
 
     <script>
         let games = JSON.parse(localStorage.getItem('myGames')) || [];
-
         function renderGames() {
             const list = document.getElementById('gameList');
             list.innerHTML = games.map((g, i) => `
                 <div class="game-card">
-                    <h3>${g.title} (${g.score}/100)</h3>
-                    <p>Estado: ${g.status}</p>
-                    <button onclick="deleteGame(${i})" style="background:#ef4444">Eliminar</button>
+                    <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
+                    <p style="margin:5px 0; opacity:0.8">${g.status}</p>
+                    <button class="delete-btn" onclick="deleteGame(${i})">Eliminar</button>
                 </div>
             `).join('');
         }
-
         function addGame() {
             const title = document.getElementById('gameTitle').value;
             const status = document.getElementById('gameStatus').value;
             const score = document.getElementById('gameScore').value;
             if(!title) return;
-            
             games.push({ title, status, score });
             localStorage.setItem('myGames', JSON.stringify(games));
             renderGames();
         }
-
-        function deleteGame(index) {
-            games.splice(index, 1);
+        function deleteGame(i) {
+            games.splice(i, 1);
             localStorage.setItem('myGames', JSON.stringify(games));
             renderGames();
         }
-
         renderGames();
     </script>
 </body>
