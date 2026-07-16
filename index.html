@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Diario Gamer</title>
-    <!-- He añadido una fuente más moderna y estilos mejorados -->
     <style>
         :root { --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; display: flex; justify-content: center; }
@@ -13,6 +12,7 @@
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
         button { background: var(--primary); font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:hover { background: #2563eb; }
+        button:disabled { background: #475569; cursor: not-allowed; }
         .delete-btn { background: #ef4444; }
         h1 { text-align: center; color: #60a5fa; }
     </style>
@@ -28,38 +28,97 @@
                 <option value="Completado">Completado</option>
             </select>
             <input type="number" id="gameScore" placeholder="Puntuación (0-100)">
-            <button onclick="addGame()">Añadir Juego</button>
+            <button id="addBtn">Añadir Juego</button>
         </div>
         <div id="gameList"></div>
     </div>
 
-    <script>
-        let games = JSON.parse(localStorage.getItem('myGames')) || [];
-        function renderGames() {
+    <!-- Script de tipo Módulo para usar Firebase -->
+    <script type="module">
+        // 1. Importar las funciones de Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // 2. Tu configuración exacta extraída de la captura de pantalla
+        const firebaseConfig = {
+            apiKey: "AIzaSyCf6mVbBLUgwibOQBf0pAnSg-NL1HFEjtc",
+            authDomain: "miwebjuegos.firebaseapp.com",
+            databaseURL: "https://miwebjuegos-default-rtdb.firebaseio.com",
+            projectId: "miwebjuegos",
+            storageBucket: "miwebjuegos.appspot.com",
+            messagingSenderId: "437668711448",
+            appId: "1:437668711448:web:46de41c01ce58bc707c76d"
+        };
+
+        // 3. Inicializar Firebase y la Base de Datos
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const juegosRef = collection(db, "juegos");
+
+        // Función para cargar los juegos de la nube y pintarlos
+        async function cargarJuegos() {
             const list = document.getElementById('gameList');
-            list.innerHTML = games.map((g, i) => `
-                <div class="game-card">
-                    <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
-                    <p style="margin:5px 0; opacity:0.8">${g.status}</p>
-                    <button class="delete-btn" onclick="deleteGame(${i})">Eliminar</button>
-                </div>
-            `).join('');
+            list.innerHTML = "<p style='text-align:center;'>Sincronizando con la nube...</p>";
+            
+            const querySnapshot = await getDocs(juegosRef);
+            let html = "";
+            
+            querySnapshot.forEach((doc) => {
+                const g = doc.data();
+                html += `
+                    <div class="game-card">
+                        <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
+                        <p style="margin:5px 0; opacity:0.8">${g.status}</p>
+                        <button class="delete-btn" data-id="${doc.id}">Eliminar</button>
+                    </div>
+                `;
+            });
+            
+            list.innerHTML = html || "<p style='text-align:center;'>Aún no hay juegos guardados.</p>";
+
+            // Programar los botones de eliminar
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    e.target.innerText = "Borrando...";
+                    e.target.disabled = true;
+                    await deleteDoc(doc(db, "juegos", id));
+                    cargarJuegos(); // Recargar la lista
+                });
+            });
         }
-        function addGame() {
-            const title = document.getElementById('gameTitle').value;
-            const status = document.getElementById('gameStatus').value;
-            const score = document.getElementById('gameScore').value;
-            if(!title) return;
-            games.push({ title, status, score });
-            localStorage.setItem('myGames', JSON.stringify(games));
-            renderGames();
-        }
-        function deleteGame(i) {
-            games.splice(i, 1);
-            localStorage.setItem('myGames', JSON.stringify(games));
-            renderGames();
-        }
-        renderGames();
+
+        // Función para guardar un juego nuevo en la nube
+        document.getElementById('addBtn').addEventListener('click', async () => {
+            const titleInput = document.getElementById('gameTitle');
+            const statusInput = document.getElementById('gameStatus');
+            const scoreInput = document.getElementById('gameScore');
+            const btn = document.getElementById('addBtn');
+            
+            if(!titleInput.value) return;
+
+            // Mostrar estado de carga
+            btn.innerText = "Guardando en la nube...";
+            btn.disabled = true;
+
+            // Enviar a Firebase
+            await addDoc(juegosRef, { 
+                title: titleInput.value, 
+                status: statusInput.value, 
+                score: scoreInput.value || 0
+            });
+
+            // Limpiar formulario y restaurar botón
+            titleInput.value = '';
+            scoreInput.value = '';
+            btn.innerText = "Añadir Juego";
+            btn.disabled = false;
+            
+            cargarJuegos(); // Recargar la lista
+        });
+
+        // Al abrir la web, cargar automáticamente
+        cargarJuegos();
     </script>
 </body>
 </html>
