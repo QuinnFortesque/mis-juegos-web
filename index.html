@@ -35,60 +35,65 @@
 
     <!-- Script de tipo Módulo para usar Firebase -->
     <script type="module">
-        // 1. Importar las funciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // 2. Tu configuración exacta extraída de la captura de pantalla
+        // Configuración CORREGIDA
         const firebaseConfig = {
-            apiKey: "AIzaSyCf6mVbBLUgwibOQBf0pAnSg-NL1HFEjtc",
+            apiKey: "AIzaSyCf6mVbBLUgwiBOQBf0pAnSg-NLIHFEjtc",
             authDomain: "miwebjuegos.firebaseapp.com",
             databaseURL: "https://miwebjuegos-default-rtdb.firebaseio.com",
             projectId: "miwebjuegos",
-            storageBucket: "miwebjuegos.appspot.com",
+            storageBucket: "miwebjuegos.firebasestorage.app",
             messagingSenderId: "437668711448",
             appId: "1:437668711448:web:46de41c01ce58bc707c76d"
         };
 
-        // 3. Inicializar Firebase y la Base de Datos
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const juegosRef = collection(db, "juegos");
 
-        // Función para cargar los juegos de la nube y pintarlos
         async function cargarJuegos() {
             const list = document.getElementById('gameList');
             list.innerHTML = "<p style='text-align:center;'>Sincronizando con la nube...</p>";
             
-            const querySnapshot = await getDocs(juegosRef);
-            let html = "";
-            
-            querySnapshot.forEach((doc) => {
-                const g = doc.data();
-                html += `
-                    <div class="game-card">
-                        <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
-                        <p style="margin:5px 0; opacity:0.8">${g.status}</p>
-                        <button class="delete-btn" data-id="${doc.id}">Eliminar</button>
-                    </div>
-                `;
-            });
-            
-            list.innerHTML = html || "<p style='text-align:center;'>Aún no hay juegos guardados.</p>";
-
-            // Programar los botones de eliminar
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    e.target.innerText = "Borrando...";
-                    e.target.disabled = true;
-                    await deleteDoc(doc(db, "juegos", id));
-                    cargarJuegos(); // Recargar la lista
+            try {
+                const querySnapshot = await getDocs(juegosRef);
+                let html = "";
+                
+                querySnapshot.forEach((doc) => {
+                    const g = doc.data();
+                    html += `
+                        <div class="game-card">
+                            <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
+                            <p style="margin:5px 0; opacity:0.8">${g.status}</p>
+                            <button class="delete-btn" data-id="${doc.id}">Eliminar</button>
+                        </div>
+                    `;
                 });
-            });
+                
+                list.innerHTML = html || "<p style='text-align:center;'>Aún no hay juegos guardados.</p>";
+
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        try {
+                            const id = e.target.getAttribute('data-id');
+                            e.target.innerText = "Borrando...";
+                            e.target.disabled = true;
+                            await deleteDoc(doc(db, "juegos", id));
+                            cargarJuegos();
+                        } catch(error) {
+                            alert("Error al borrar: " + error.message);
+                            e.target.innerText = "Eliminar";
+                            e.target.disabled = false;
+                        }
+                    });
+                });
+            } catch (error) {
+                list.innerHTML = `<p style='text-align:center; color:red;'>Error de conexión: ${error.message}</p>`;
+            }
         }
 
-        // Función para guardar un juego nuevo en la nube
         document.getElementById('addBtn').addEventListener('click', async () => {
             const titleInput = document.getElementById('gameTitle');
             const statusInput = document.getElementById('gameStatus');
@@ -97,27 +102,29 @@
             
             if(!titleInput.value) return;
 
-            // Mostrar estado de carga
             btn.innerText = "Guardando en la nube...";
             btn.disabled = true;
 
-            // Enviar a Firebase
-            await addDoc(juegosRef, { 
-                title: titleInput.value, 
-                status: statusInput.value, 
-                score: scoreInput.value || 0
-            });
+            try {
+                await addDoc(juegosRef, { 
+                    title: titleInput.value, 
+                    status: statusInput.value, 
+                    score: scoreInput.value || 0
+                });
 
-            // Limpiar formulario y restaurar botón
-            titleInput.value = '';
-            scoreInput.value = '';
-            btn.innerText = "Añadir Juego";
-            btn.disabled = false;
-            
-            cargarJuegos(); // Recargar la lista
+                titleInput.value = '';
+                scoreInput.value = '';
+                btn.innerText = "Añadir Juego";
+                btn.disabled = false;
+                
+                cargarJuegos();
+            } catch (error) {
+                alert("Uy, algo ha fallado: " + error.message);
+                btn.innerText = "Reintentar Añadir";
+                btn.disabled = false;
+            }
         });
 
-        // Al abrir la web, cargar automáticamente
         cargarJuegos();
     </script>
 </body>
