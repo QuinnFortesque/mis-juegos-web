@@ -6,40 +6,50 @@
     <title>Mi Diario Gamer</title>
     <style>
         :root { --primary: #3b82f6; --bg: #0f172a; --card: #1e293b; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; display: flex; justify-content: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; padding: 20px; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 500px; }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .game-card { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
         button { background: var(--primary); font-weight: bold; cursor: pointer; transition: 0.3s; }
         button:hover { background: #2563eb; }
         button:disabled { background: #475569; cursor: not-allowed; }
         .delete-btn { background: #ef4444; }
-        h1 { text-align: center; color: #60a5fa; }
+        .auth-btn { width: auto; padding: 8px 16px; font-size: 14px; background: white; color: black; border-radius: 20px; border: none;}
+        h1 { text-align: center; color: #60a5fa; margin: 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎮 Mi Diario Gamer</h1>
-        <div class="game-card">
+        <div class="header-bar">
+            <h1>🎮 Mi Diario Gamer</h1>
+            <button id="authBtn" class="auth-btn">Iniciar Sesión</button>
+        </div>
+
+        <div id="welcome-msg" style="text-align: center; margin-bottom: 15px; color: #94a3b8; font-size: 14px;">
+            Modo lectura. Inicia sesión para editar.
+        </div>
+
+        <div class="game-card" id="form-container" style="display:none;">
             <input type="text" id="gameTitle" placeholder="Título del juego...">
             <select id="gameStatus">
                 <option value="Pendiente">Pendiente</option>
                 <option value="Jugando">Jugando</option>
-                <option value="Dropeado">Dropeado</option>
                 <option value="Completado">Completado</option>
             </select>
             <input type="number" id="gameScore" placeholder="Puntuación (0-100)">
             <button id="addBtn">Añadir Juego</button>
         </div>
+        
         <div id="gameList"></div>
     </div>
 
-    <!-- Script de tipo Módulo para usar Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        // Configuración CORREGIDA
+        // Configuración de tu base de datos
         const firebaseConfig = {
             apiKey: "AIzaSyCf6mVbBLUgwiBOQBf0pAnSg-NLIHFEjtc",
             authDomain: "miwebjuegos.firebaseapp.com",
@@ -52,50 +62,101 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
         const juegosRef = collection(db, "juegos");
 
+        // AQUÍ ESTÁ EL CANDADO DE SEGURIDAD
+        const ADMIN_EMAIL = "joaquinrodriguezmartos7@gmail.com";
+        let isUserAdmin = false;
+
+        const authBtn = document.getElementById('authBtn');
+        const welcomeMsg = document.getElementById('welcome-msg');
+        const formContainer = document.getElementById('form-container');
+
+        // Lógica del botón de iniciar/cerrar sesión
+        authBtn.addEventListener('click', () => {
+            if (auth.currentUser) {
+                signOut(auth);
+            } else {
+                signInWithPopup(auth, provider).catch(error => {
+                    // Ignoramos el error si el usuario cierra la ventana emergente
+                    if (error.code !== 'auth/popup-closed-by-user') {
+                        alert("Error al iniciar sesión: " + error.message);
+                    }
+                });
+            }
+        });
+
+        // Escuchar cambios de sesión
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                authBtn.innerText = "Cerrar Sesión";
+                // Comprobamos si el que entra eres tú
+                if (user.email === ADMIN_EMAIL) {
+                    isUserAdmin = true;
+                    welcomeMsg.innerHTML = `¡Hola, jefe! Eres el administrador.`;
+                    welcomeMsg.style.color = "#4ade80"; // Verde
+                    formContainer.style.display = 'block';
+                } else {
+                    isUserAdmin = false;
+                    welcomeMsg.innerHTML = `Hola, ${user.displayName}. Estás en modo visitante.`;
+                    welcomeMsg.style.color = "#94a3b8"; // Gris
+                    formContainer.style.display = 'none';
+                }
+            } else {
+                authBtn.innerText = "Iniciar Sesión";
+                isUserAdmin = false;
+                welcomeMsg.innerHTML = `Modo visitante. Solo lectura.`;
+                welcomeMsg.style.color = "#94a3b8";
+                formContainer.style.display = 'none';
+            }
+            cargarJuegos(); // Recargar la lista aplicando permisos
+        });
+
+        // Cargar juegos desde la base de datos
         async function cargarJuegos() {
             const list = document.getElementById('gameList');
-            list.innerHTML = "<p style='text-align:center;'>Sincronizando con la nube...</p>";
+            list.innerHTML = "<p style='text-align:center;'>Cargando biblioteca...</p>";
             
             try {
                 const querySnapshot = await getDocs(juegosRef);
                 let html = "";
                 
-                querySnapshot.forEach((doc) => {
-                    const g = doc.data();
+                querySnapshot.forEach((docSnap) => {
+                    const g = docSnap.data();
                     html += `
                         <div class="game-card">
                             <h3 style="margin:0">${g.title} <span style="float:right">${g.score}/100</span></h3>
                             <p style="margin:5px 0; opacity:0.8">${g.status}</p>
-                            <button class="delete-btn" data-id="${doc.id}">Eliminar</button>
+                            ${isUserAdmin ? `<button class="delete-btn" data-id="${docSnap.id}">Eliminar</button>` : ''}
                         </div>
                     `;
                 });
                 
                 list.innerHTML = html || "<p style='text-align:center;'>Aún no hay juegos guardados.</p>";
 
-                document.querySelectorAll('.delete-btn').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        try {
+                // Añadir evento a los botones de borrar (solo si eres admin)
+                if (isUserAdmin) {
+                    document.querySelectorAll('.delete-btn').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
                             const id = e.target.getAttribute('data-id');
                             e.target.innerText = "Borrando...";
                             e.target.disabled = true;
                             await deleteDoc(doc(db, "juegos", id));
                             cargarJuegos();
-                        } catch(error) {
-                            alert("Error al borrar: " + error.message);
-                            e.target.innerText = "Eliminar";
-                            e.target.disabled = false;
-                        }
+                        });
                     });
-                });
+                }
             } catch (error) {
-                list.innerHTML = `<p style='text-align:center; color:red;'>Error de conexión: ${error.message}</p>`;
+                list.innerHTML = `<p style='text-align:center; color:red;'>Error: ${error.message}</p>`;
             }
         }
 
+        // Añadir nuevo juego
         document.getElementById('addBtn').addEventListener('click', async () => {
+            if(!isUserAdmin) return;
+
             const titleInput = document.getElementById('gameTitle');
             const statusInput = document.getElementById('gameStatus');
             const scoreInput = document.getElementById('gameScore');
@@ -103,7 +164,7 @@
             
             if(!titleInput.value) return;
 
-            btn.innerText = "Guardando en la nube...";
+            btn.innerText = "Guardando...";
             btn.disabled = true;
 
             try {
@@ -121,12 +182,10 @@
                 cargarJuegos();
             } catch (error) {
                 alert("Uy, algo ha fallado: " + error.message);
-                btn.innerText = "Reintentar Añadir";
+                btn.innerText = "Reintentar";
                 btn.disabled = false;
             }
         });
-
-        cargarJuegos();
     </script>
 </body>
 </html>
